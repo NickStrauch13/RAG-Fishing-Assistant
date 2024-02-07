@@ -3,5 +3,5 @@
 # Retreival Augmented Generation (RAG) Fishing Assistant
 
 <div align="center">
-    <img src="img/readme_pic.jpg" width="700" height="450">
+    <img src="img/readme_pic.jpg" width="600" height="375">
 </div>
