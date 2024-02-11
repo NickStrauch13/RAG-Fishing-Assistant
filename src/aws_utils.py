@@ -56,12 +56,7 @@ if __name__ == "__main__":
     records = query_db(cursor, query)
     print(type(records))
     print(len(records))
-    print(records[2470])
-    print("-"*50)
-    print(records[2370])
+    print(records[0])
     cursor.close()
     conn.close()
-    # TODO
-    # The oldest data chunks have all of the paragraphs smushed into one record. Probably just drop these.
-    # Some of the dates (like in record 2370) are invalid ex: year=42011. 
     # Figure out the best way to combine the location and time data into the string. maybe just do + " Location: {location}, Month: {month}, Year: {year}"
