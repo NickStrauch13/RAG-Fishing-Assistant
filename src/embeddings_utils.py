@@ -138,7 +138,7 @@ def find_most_similar_chunks(input_text_embedding: np.ndarray, chunk_embeddings:
 
 
 
-def load_embeddings(file: str) -> dict:
+def load_embeddings(file: str) -> list:
     """
     Loads embeddings from a json file.
 
@@ -146,11 +146,14 @@ def load_embeddings(file: str) -> dict:
     - file (str): The name of the file to load.
 
     Returns:
-    - dict: A dictionary of embeddings.
+    - embedding_list: A list of embeddings. Index of the list corresponds to the DB paragraph index.
     """
     with open(file, "r") as f:
         embeddings = json.load(f)
-    return embeddings
+
+    embedding_list = [embeddings[str(i)] for i in range(1, len(embeddings)+1)]
+
+    return embedding_list
 
 
 def get_related_text_for_rag(input_text: str, 
@@ -181,7 +184,7 @@ def get_related_text_for_rag(input_text: str,
         shifted_idx = idx + 1
         query = f"SELECT paragraph, month, year, city FROM raw_paragraphs WHERE id={shifted_idx}"
         records = query_db(db_cursor, query)
-        formatted_text = f"{records[0][0]} Location: {records[0][3]}, Month: {records[0][1]}, Year: {records[0][2]}"
+        formatted_text = f"{records[0][0]} Location: {records[0][3]}, Month: {records[0][1]}"
         related_text.append((formatted_text, sim))
     return related_text
 
@@ -196,8 +199,7 @@ if __name__ == "__main__":
     conn, cursor = connect_to_database()
 
     # load the embeddings
-    embedding_dict = load_embeddings("../data/embeddings_1536.json")
-    embedding_list = [embedding_dict[str(i)] for i in range(1, len(embedding_dict)+1)]
+    embedding_list = load_embeddings("../data/embeddings_1536.json")
 
     start = time.time()
     # Find and print the most similar paragraphs
