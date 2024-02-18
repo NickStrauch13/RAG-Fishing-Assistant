@@ -26,7 +26,7 @@ amberjack
 snapper
 black sea bass
 
-
+# Abbrev
 reds
 redfish
 bull red
@@ -43,13 +43,13 @@ striper
 
 
 
-Create chunks by combining 8 paragraphs.
+IDEAS FOR IMPROVING CHUNKS: 
+
+Create chunks by combining 8? paragraphs.
 
 New chunks should be made up of same month if possible.
 
-Set all to lowercase
+Iterate through list, find 8 paragraphs with first keyword and "January". Once done (or if not enough in jan, append feb), move onto "Feburary" with the same keyword. Go through all 12 months for a single keyword. Then move onto next keyword and start from jan. If you get all the way through the months without filling up a chunk, it will just be a short chunk. 
 
-Go down list, find 8 paragraphs with first keyword and "January". Once done (or if not enough in jan, sppend feb on), move onto "Feburary" with the same keyword. Go through all 12 months for a single keyword. Then move onto next keyword and start from jan. If you get all the way through the months without filling up a chunk, itll be a short chunk. 
-
-So assuming a popular keyword, there should be 12 new chunks for it made up of 86 paragraphs after a single year pass, each new chunk representing a different month.
+Assuming a popular keyword, there should be 12 new chunks for it made up of 86 paragraphs after a single year pass, each new chunk representing a different month. Repeat process until all paragraphs combined.
 
