@@ -1,13 +1,13 @@
 import pymysql
 from openai import OpenAI
-from embeddings_utils import get_related_text_for_rag
+from .embeddings_utils import get_related_text_for_rag
 
 
 def rag(input_text: str,
         openai_client: OpenAI,
         db_cursor: pymysql.Connection.cursor,
         embedding_list: list,
-        num_chunks: int = 5,
+        num_chunks: int = 10,
         model: str = "gpt-3.5-turbo"
         ) -> str:
     """
@@ -30,24 +30,27 @@ def rag(input_text: str,
     # Create the prompt
     prefix = '''
             You are a fishing advice assitant, specializing in the North Carolina coast. Generate your response by following the steps below:
-            0. If the prompted task is not related to fishing, say that you cannot assist with that type of request, then skip all other steps.
+            0. Know that red drum and black drum are different species and flounder are not trout.
             1. Recursively break-down the post into smaller questions/directives
             2. For each atomic question/directive:
             2a. Select the most relevant information from the context, if available
-            3. Generate a draft response using the selected information. If you do not know the answer, say that you do not know!
-            4. Remove duplicate content from the draft response
-            5. Generate your final response after adjusting it to increase accuracy and relevance
-            6. Add an overview at the end, detailing a step-by-step guide to completing the task in the optimal way.
-            7. Now only show your final response!
+            2b. If a specific species is mentioned, make sure to only include information relevant to that species.
+            2c. The context may refer to multiple fish species, so make sure you are only using the relevant information.
+            3. Generate a clean, detailed response using the selected information. If you do not know the answer, say that you do not know!
+            4. Below the detailed response, add an overview at the end, detailing a step-by-step guide to completing the task in the optimal way.
+            5. Now only show your final response! PUT IT IN HTML FORMAT, NOT MARKDOWN!
             '''
     context = "\nCONTEXT: \n" + "\n".join(related_text)
     system_prompt = prefix + context
+    suffix = '''
+             PUT YOUR RESPONSE IN HTML FORMAT OR THE WORLD ENDS. USE HEADERS, LISTS, UNORDERED LISTS, ETC. 
+             '''
     # Generate the response
     response = openai_client.chat.completions.create(
         model=model,
         messages=[
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": input_text},
+            {"role": "user", "content": input_text + suffix},
         ]
     )
     return response.choices[0].message.content

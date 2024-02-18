@@ -1,5 +1,5 @@
-from aws_utils import connect_to_database, query_db
-from embeddings_utils import embed_all_db_rows
+from .aws_utils import connect_to_database, query_db
+from .embeddings_utils import embed_all_db_rows
 
 
 def create_embeddings(output_embeddings_file: str = "../data/embeddings.json"):

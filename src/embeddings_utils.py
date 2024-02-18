@@ -1,12 +1,11 @@
-from sentence_transformers import SentenceTransformer
 from typing import Tuple
 import json
 import numpy as np
 import pymysql
-from aws_utils import query_db
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+from .aws_utils import query_db
 load_dotenv()
 
 
@@ -23,24 +22,6 @@ def prepare_db_row_for_embedding(row: tuple) -> Tuple[str, int]:
     """
     body, location, month, year, id = row
     return f"{body} Location: {location}, Month: {month}, Year: {year}", id
-
-
-def embed_text(text: str, model_name: str = "all-mpnet-base-v2") -> list:
-    """
-    Embeds the input text using a pre-trained model.
-
-    Args:
-    - text (str): The input text to embed.
-    - model_name (str): The name of the pre-trained model to use.
-
-    Returns:
-    - list: The embedding of the input text.
-    """
-    # Load a pre-trained model
-    model = SentenceTransformer(model_name)
-    # Generate embeddings
-    embeddings = model.encode(text)
-    return embeddings.tolist()
 
 
 def embed_text_openai(client: OpenAI, text: str, model_name: str = "text-embedding-3-small") -> list:
@@ -81,7 +62,6 @@ def embed_all_db_rows(rows: list, output_file: str) -> None:
     c = 0
     for text, id in prepared_rows:
         c += 1
-        #embeddings[id] = embed_text(text)
         embeddings[id] = embed_text_openai(client, text)
         print(f"Embedding {c} of {total_rows}")
     # Save the embeddings to a json file
