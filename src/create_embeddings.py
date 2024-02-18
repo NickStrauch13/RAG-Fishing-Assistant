@@ -23,4 +23,5 @@ def create_embeddings(output_embeddings_file: str = "../data/embeddings.json"):
 
 
 if __name__ == "__main__":
-    create_embeddings("../data/embeddings_768.json")
+    
+    create_embeddings("../data/embeddings_1536.json")

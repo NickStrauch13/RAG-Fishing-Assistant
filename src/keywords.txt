@@ -1,0 +1,55 @@
+red drum
+speckled trout
+flounder
+black drum
+spanish mackerel
+king mackerel
+sheepshead
+pompano
+false albacore
+bonito
+striped bass
+cobia
+mahi
+sailfish
+grouper
+whiting
+wahoo
+blackfin tuna
+bluefish
+blue marlin
+white marlin
+billfish
+tarpon
+triggerfish
+amberjack
+snapper
+black sea bass
+
+
+reds
+redfish
+bull red
+croaker
+sea mullet
+spanish
+mullet
+puppy drum
+menhaden
+dolphin
+trout
+kings
+striper
+
+
+
+Create chunks by combining 8 paragraphs.
+
+New chunks should be made up of same month if possible.
+
+Set all to lowercase
+
+Go down list, find 8 paragraphs with first keyword and "January". Once done (or if not enough in jan, sppend feb on), move onto "Feburary" with the same keyword. Go through all 12 months for a single keyword. Then move onto next keyword and start from jan. If you get all the way through the months without filling up a chunk, itll be a short chunk. 
+
+So assuming a popular keyword, there should be 12 new chunks for it made up of 86 paragraphs after a single year pass, each new chunk representing a different month.
+

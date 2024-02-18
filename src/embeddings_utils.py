@@ -2,6 +2,12 @@ from sentence_transformers import SentenceTransformer
 from typing import Tuple
 import json
 import numpy as np
+import pymysql
+from aws_utils import query_db
+from openai import OpenAI
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 
 def prepare_db_row_for_embedding(row: tuple) -> Tuple[str, int]:
@@ -28,13 +34,32 @@ def embed_text(text: str, model_name: str = "all-mpnet-base-v2") -> list:
     - model_name (str): The name of the pre-trained model to use.
 
     Returns:
-    - list: A list of vectors, one for each paragraph in the input text.
+    - list: The embedding of the input text.
     """
     # Load a pre-trained model
     model = SentenceTransformer(model_name)
     # Generate embeddings
     embeddings = model.encode(text)
-    return embeddings
+    return embeddings.tolist()
+
+
+def embed_text_openai(client: OpenAI, text: str, model_name: str = "text-embedding-3-small") -> list:
+    """
+    Embeds the input text using a pre-trained model.
+
+    Args:
+    - client (OpenAI): The OpenAI client.
+    - text (str): The input text to embed.
+    - model_name (str): The name of the pre-trained model to use.
+
+    Returns:
+    - dict: A dictionary with the embedding at ['data'][0]['embedding']
+    """
+    response = client.embeddings.create(
+        input=text,
+        model=model_name  
+    )
+    return response.data[0].embedding
 
 
 def embed_all_db_rows(rows: list, output_file: str) -> None:
@@ -48,20 +73,23 @@ def embed_all_db_rows(rows: list, output_file: str) -> None:
     """
     # Prepare the rows for embedding
     prepared_rows = [(prepare_db_row_for_embedding(row)[0],prepare_db_row_for_embedding(row)[1]) for row in rows]
+    # Create openai client
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
     # Embed the rows
     embeddings = {}
     total_rows = len(prepared_rows)
     c = 0
     for text, id in prepared_rows:
         c += 1
-        embeddings[id] = embed_text(text).tolist()
+        #embeddings[id] = embed_text(text)
+        embeddings[id] = embed_text_openai(client, text)
         print(f"Embedding {c} of {total_rows}")
     # Save the embeddings to a json file
     with open(output_file, "w") as f:
         json.dump(embeddings, f)
 
 
-def cosine_similarity(vec1, vec2):
+def cosine_similarity(vec1: np.ndarray, vec2: np.ndarray) -> float:
     """
     Computes the cosine similarity between two vectors.
 
@@ -79,25 +107,35 @@ def cosine_similarity(vec1, vec2):
     return similarity
 
 
-def find_most_similar_chunks(input_text_embeddings, chunk_embeddings, top_n=5):
+def find_most_similar_chunks(input_text_embedding: np.ndarray, chunk_embeddings: list, top_n: int = 5) -> list:
     """
-    Finds the most similar paragraphs to the input text.
+    Finds the most similar paragraphs to the input text using matrix operations.
 
     Args:
-    - input_text_embeddings (np.ndarray): Embeddings of the input text.
+    - input_text_embedding (np.ndarray): Embedding of the input text.
     - chunk_embeddings (list of np.ndarray): Embeddings of paragraphs to compare against.
     - top_n (int): Number of most similar paragraphs to return.
 
     Returns:
     - list of tuples: A list of tuples containing the index of the paragraph and its similarity score.
     """
-    # Calculate cosine similarity between input text embeddings and paragraph embeddings
-    similarities = [cosine_similarity(input_text_embeddings, emb) for emb in chunk_embeddings]
+    input_text_embedding = np.array(input_text_embedding).reshape(1, -1)
+    chunk_embeddings_matrix = np.array(chunk_embeddings)
+
+    # Normalize the embeddings to unit length
+    input_text_embedding /= np.linalg.norm(input_text_embedding, axis=1, keepdims=True)
+    chunk_embeddings_matrix /= np.linalg.norm(chunk_embeddings_matrix, axis=1, keepdims=True)
+
+    # Compute cosine similarities using dot product
+    similarities = np.dot(input_text_embedding, chunk_embeddings_matrix.T).flatten()
+
     # Get indices of top_n most similar paragraphs
     top_indices = np.argsort(similarities)[-top_n:][::-1]
     # Create a list of tuples containing paragraph index and similarity score
     most_similar_paragraphs = [(idx, similarities[idx]) for idx in top_indices]
+
     return most_similar_paragraphs
+
 
 
 def load_embeddings(file: str) -> dict:
@@ -115,32 +153,64 @@ def load_embeddings(file: str) -> dict:
     return embeddings
 
 
+def get_related_text_for_rag(input_text: str, 
+                             embedding_list: list, 
+                             openai_client: OpenAI, 
+                             db_cursor: pymysql.Connection.cursor,
+                             top_n: int = 5) -> list:
+    """
+    Gets the most similar paragraphs to the input text.
+
+    Args:
+    - input_text (str): The input text.
+    - embedding_list (list): A list of embeddings to compare against. Index of the list corresponds to the paragraph index.
+    - openai_client (OpenAI): The OpenAI client.
+    - top_n (int): Number of most similar chunks to return.
+
+    Returns:
+    - related_text (list): A list of tuples containing the formatted text chunks and its similarity score.
+    """
+    # Embed the input text
+    input_text_embedding = embed_text_openai(openai_client, input_text)
+    # Find the most similar paragraphs
+    most_similar = find_most_similar_chunks(input_text_embedding, embedding_list, top_n=top_n)
+    # Get the text from the DB
+    related_text = []
+    for idx, sim in most_similar:
+        # Shift the index by 1 to match the database (db is 1-indexed  :/)
+        shifted_idx = idx + 1
+        query = f"SELECT paragraph, month, year, city FROM raw_paragraphs WHERE id={shifted_idx}"
+        records = query_db(db_cursor, query)
+        formatted_text = f"{records[0][0]} Location: {records[0][3]}, Month: {records[0][1]}, Year: {records[0][2]}"
+        related_text.append((formatted_text, sim))
+    return related_text
+
 
 
 if __name__ == "__main__":
-    # load the embeddings
-    embedding_dict = load_embeddings("../data/embeddings.json")
+    import time
+    from aws_utils import connect_to_database
 
-    # Put embedding_dict into a list of its values
+    # Create connections
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    conn, cursor = connect_to_database()
+
+    # load the embeddings
+    embedding_dict = load_embeddings("../data/embeddings_1536.json")
     embedding_list = [embedding_dict[str(i)] for i in range(1, len(embedding_dict)+1)]
 
-    # Embed the input text
-    input_text = "red drum"
-    input_text_embedding = embed_text(input_text)
+    start = time.time()
+    # Find and print the most similar paragraphs
+    input_text = "Where is the best place to target pompano?"
+    related_text = get_related_text_for_rag(input_text, embedding_list, client, cursor, top_n=5)
+    for text, sim in related_text:
+        print(f"{text}\nSimilarity: {sim}")
+        print("-"*50)
 
-    # Find the most similar paragraphs
-    most_similar = find_most_similar_chunks(input_text_embedding, embedding_list)
-    print("Found most similar chunks!")
-
-    # Print the most similar paragraphs
-    from aws_utils import connect_to_database, query_db
-    conn, cursor = connect_to_database()
-    for idx, sim in most_similar:
-        query = f"SELECT paragraph, month, year FROM raw_paragraphs WHERE id={idx}"
-        records = query_db(cursor, query)
-        print(f"Similarity: {sim}")
-        print(f"{records[0][0]} {records[0][1]},{records[0][2]}")
-        print("-------------------------------------------------")
+    time_taken = time.time() - start
+    print(f"Time taken: {time_taken} seconds")
+    
+    
 
 
 
