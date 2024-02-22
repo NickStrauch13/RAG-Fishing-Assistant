@@ -1,20 +1,15 @@
-from src.aws_utils import connect_to_database, query_db
+from src.embeddings_utils import embed_text_openai 
 
 
-def test_connect_to_database():
-    conn, cursor = connect_to_database()
-    assert conn is not None
-    assert cursor is not None
-    cursor.close()
-    conn.close()
-
-
-def test_query_db():
-    conn, cursor = connect_to_database()
-    query = "SELECT * FROM raw_paragraphs LIMIT 10"
-    records = query_db(cursor, query)
-    assert records is not None
-    assert type(records) == tuple
-    assert len(records) == 10
-    cursor.close()
-    conn.close()
+def test_text_embedding():
+    """
+    Test the text embedding function.
+    """
+    # Define the input text
+    text = "This is a test."
+    # Embed the text
+    embedding = embed_text_openai(text)
+    # Check the type of the output
+    assert type(embedding) == list
+    # Check the length of the output
+    assert len(embedding) == 1536
