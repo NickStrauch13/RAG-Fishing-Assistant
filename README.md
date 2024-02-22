@@ -26,7 +26,7 @@ The RAG system’s performance metrics are compared to the base ChatGPT-3.5-turb
 - `Relevance`: How relevant is the response to the input prompt?
 - `Accuracy`: How correct is all of the information provided in the response?
 - `Informativeness`: How informative or useful is the response?
-- `Specificity`: How detailed is the response?
+- `Specificity`: How detailed is the response? 
 
 |                | Relevance | Accuracy | Informativeness | Specificity |
 |----------------|-----------|----------|-----------------|-------------|
