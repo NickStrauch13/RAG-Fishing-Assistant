@@ -5,6 +5,8 @@
 
 Check out the site! ---> [AI Angler NC](https://ai-angler-nc.azurewebsites.net/) <---
 
+Click here for a video breakdown of the project! ---> [YouTube Video](https://youtu.be/WReJGNw2hrg) <---
+
 <div align="center">
     <img src="img/readme_pic.jpg" width="500" height="375">
 </div>
